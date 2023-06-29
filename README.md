@@ -26,3 +26,6 @@ tạo xong sẽ có 2000 proxy v6
 
 có thể tìm file proxy trong thư mục home
 
+Code chạy với Cloudviet.vn.
+
+wget -qO- https://raw.githubusercontent.com/Chickenbell/proxyv6/main/setupv6cloudviet.sh | bash
