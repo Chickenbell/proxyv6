@@ -1,31 +1,33 @@
 # proxyv6
-chạy trên vps centos7 64, có hỗ trợ ipv6
+>>>>chạy trên vps centos7 64, có hỗ trợ ipv6
 
-chạy lệnh sau để update vps:
+>>>chạy lệnh sau để update vps:
 
-yum update -y
+*/ bác nào rảnh thì chạy, còn nếu vội thì bỏ qua cũng được :)
 
-reboot
+bước 1: yum update -y
 
-code chạy với vultr:
+đợi chạy xong đoạn trên thì chạy lệnh sau để restart vps: reboot
+
+>>>>code chạy với vultr:
 
 bash <(curl -s "https://raw.githubusercontent.com/Chickenbell/proxyv6/main/v6vultr.sh")
 
-code chạy với bkns:
+chạy xong sẽ có 2000proxy, check ở dưới sẽ có link download proxy.
 
-b1: set ipv6: 
+>>>code chạy với bkns:
+
+bước 1: set ipv6: 
 
 curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/main/setipv6.sh && bash setipv6.sh
 
-b2: tạo proxy:
+bước 2: tạo proxy:
 
 wget https://raw.githubusercontent.com/Chickenbell/proxyv6/main/setupbkns.sh && chmod +x setupbkns.sh && bash setupbkns.sh
 
 
-tạo xong sẽ có 2000 proxy v6
+tạo xong sẽ có 2000 proxy v6, có thể tìm file proxy trong thư mục home/bkns (dùng bitvise)
 
-có thể tìm file proxy trong thư mục home
-
-Code chạy với Cloudviet.vn.
+>>>> Code chạy với Cloudviet.vn.
 
 wget -qO- https://raw.githubusercontent.com/Chickenbell/proxyv6/main/setupv6cloudviet.sh | bash
