@@ -34,6 +34,6 @@ wget -qO- https://raw.githubusercontent.com/Chickenbell/proxyv6/main/setupv6clou
 
 >>>> Vpsttt
 
-wget https://raw.githubusercontent.com/Chickenbell/proxyv6/main/v6Vpsttt.sh
+wget https://raw.githubusercontent.com/Chickenbell/proxyv6/main/v6Vpsttt.sh && chmod +x v6Vpsttt.sh && bash v6Vpsttt.sh
 
-chmod +x v6Vpsttt.sh && bash v6Vpsttt.sh
+
