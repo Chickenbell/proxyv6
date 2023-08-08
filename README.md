@@ -62,6 +62,33 @@ Nhập số lượng proxy muốn khởi tạo. Mặc định phần mềm sẽ 
 Nhập proxy password. Nếu quý khách để trống, phần mềm sẽ tạo password ngẫu nhiên.
 Sau khi cài đặt, quý khách sẽ nhận được 1 link download file proxy đã khởi tạo. File được nén với phần mềm zip, quý khách sử dụng mật khẩu được hiển thị để giải nén. Bất kì lúc nào, quý khách cũng có thể chạy lại phần mềm levip6 để thêm, bớt proxy (menu 7) nếu cần.Quý khách cũng có thể xem lại các proxy đã được khởi tạo bằng menu 8.
 
+------------------------>>>> Cloudfly <<<<<------------------------
+Cấu hình vps: 
+
+IPV6ADDR="Lấy trong trang quản lý"
+
+IPV6_DEFAULTGW="Lấy trong trang quản lý"
+
+echo "IPV6_FAILURE_FATAL=no
+
+IPV6_ADDR_GEN_MODE=stable-privacy
+
+IPV6ADDR=$IPV6ADDR/64
+
+IPV6_DEFAULTGW=$IPV6_DEFAULTGW" >> /etc/sysconfig/network-scripts/ifcfg-eth0
+
+service network restart
+
+>>>>Tạo proxy có pass:
+
+curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/main/cloudfly-ipv6-with-password.sh && chmod +x cloudfly-ipv6-with-password.sh && bash cloudfly-ipv6-with-password.sh
+
+>>>>Tạo proxy Không pass:
+
+curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/main/cloudfly-ipv6-none-password.sh && chmod +x cloudfly-ipv6-none-password.sh && bash cloudfly-ipv6-none-password.sh
+
+Lấy thông tin proxy ở: cd /home/cloudfly
+
 
 
 
