@@ -1,15 +1,4 @@
 # proxyv6
->>>>chạy trên vps centos7 64, có hỗ trợ ipv6
-
->>>chạy lệnh sau để update vps:
-
-*/ bác nào rảnh thì chạy, còn nếu vội thì bỏ qua cũng được :)
-
-bước 1: yum update -y
-
-đợi chạy xong đoạn trên thì chạy lệnh sau để restart vps: reboot
-
-
 
 ------------------------>>>> code chạy với vultr: <<<<<------------------------
 
@@ -21,39 +10,48 @@ VPS chạy CentOS / AlmaLinux / Rocky / RHEL 8+
 
 Quyền root (sudo nếu không login bằng root)
 
+-----------------------------------------------------------------------------
+
 🛠️ CÁCH CHẠY:
 
-✳️ BƯỚC 1: Tải script về VPS
+B1: update hệ thống (thường khá mất thời gian, có thể bỏ qua): yum update -y
 
-curl -O https://raw.githubusercontent.com/Chickenbell/proxyv6/main/v6vultr.sh
+đợi chạy xong thì chạy lệnh sau để restart vps: reboot
 
-✳️ BƯỚC 2: Cấp quyền thực thi
 
-chmod +x v6vultr.sh
+B2: cài đặt:
 
-✳️ BƯỚC 3: Chạy script
+curl -O https://raw.githubusercontent.com/Chickenbell/proxyv6/main/v6vultr2.sh
 
-➤ Không cần user/pass (proxy mở)
+chmod +x v6vultr2.sh
 
-sudo ./v6vultr.sh
+sudo ./v6vultr2.sh
 
-➤ Bảo vệ bằng user/pass (proxy có xác thực)
+-----------------------------------------------------------------------------
 
-sudo AUTH_MODE=strong ./v6vultr.sh
+Script sẽ hỏi:
 
-📁 KẾT QUẢ SAU KHI CHẠY
+Số lượng proxy (mặc định: 2000)
 
-Proxy IPv6 chạy từ port 40000 đến 42000
+Port bắt đầu (mặc định: 40000)
 
-Sinh file danh sách proxy:
+Có dùng username/password không
 
-proxy.txt nếu không dùng user/pass
+Nếu có auth thì nhập username/password
 
-proxy_auth.txt nếu có user/pass
+-----------------------------------------------------------------------------
 
-Tạo file .zip chứa proxy và in ra link tải (qua file.io)
+Kết quả:
 
-Nếu không tìm thấy thì hãy tìm trong thư mục: 
+Tạo và khởi động 3proxy service
+
+Cấu hình firewall mở ports
+
+Tạo files proxy.txt và data.txt
+
+Upload lên file.io và hiển thị download links
+
+
 
 ------------------------>>> code chạy với bkns: <<<<<------------------------
 
