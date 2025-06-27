@@ -103,8 +103,8 @@ yum -y install gcc net-tools bsdtar zip make >/dev/null
 
 install_3proxy
 
-echo "working folder = /home/proxy-installer"
-WORKDIR="/home/proxy-installer"
+echo "working folder = /home/chickenbell"
+WORKDIR="/home/chickenbell"
 WORKDATA="${WORKDIR}/data.txt"
 mkdir $WORKDIR && cd $_
 
@@ -135,6 +135,6 @@ EOF
 
 bash /etc/rc.local
 
-gen_proxy_file_for_user
+echo "Proxy save on /home/chickenbell/proxy.txt"
 
 upload_proxy
