@@ -13,32 +13,49 @@ gen64() {
 	echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
 }
 install_3proxy() {
-    echo "installing 3proxy"
-    mkdir -p /3proxy
-    cd /3proxy
-    URL="https://it4.vn/0.9.3.tar.gz"
-    wget -qO- $URL | bsdtar -xvf-
-    cd 3proxy-0.9.3
-    make -f Makefile.Linux
-    mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
-    mv /3proxy/3proxy-0.9.3/bin/3proxy /usr/local/etc/3proxy/bin/
-    wget https://it4.vn/3proxy.service-Centos8 --output-document=/3proxy/3proxy-0.9.3/scripts/3proxy.service2
-    cp /3proxy/3proxy-0.9.3/scripts/3proxy.service2 /usr/lib/systemd/system/3proxy.service
-    systemctl link /usr/lib/systemd/system/3proxy.service
-    systemctl daemon-reload
-    systemctl enable 3proxy
-    echo "* hard nofile 999999" >>  /etc/security/limits.conf
-    echo "* soft nofile 999999" >>  /etc/security/limits.conf
-    echo "net.ipv6.conf.$main_interface.proxy_ndp=1" >> /etc/sysctl.conf
-    echo "net.ipv6.conf.all.proxy_ndp=1" >> /etc/sysctl.conf
-    echo "net.ipv6.conf.default.forwarding=1" >> /etc/sysctl.conf
-    echo "net.ipv6.conf.all.forwarding=1" >> /etc/sysctl.conf
-    echo "net.ipv6.ip_nonlocal_bind = 1" >> /etc/sysctl.conf
-    sysctl -p
-    systemctl stop firewalld
-    systemctl disable firewalld
+  echo "installing 3proxy"
+  mkdir -p /3proxy && cd /3proxy
 
-    cd $WORKDIR
+  # 1. Tải mã nguồn
+  URL="https://github.com/z3APA3A/3proxy/archive/refs/tags/0.9.3.tar.gz"
+  wget -qO- "$URL" | tar -xz
+  cd 3proxy-0.9.3
+
+  # 2. Biên dịch
+  make -f Makefile.Linux
+
+  # 3. Cài đặt
+  mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
+  install -m 755 src/3proxy /usr/local/etc/3proxy/bin/3proxy
+
+  # 4. Service systemd
+  cat >/usr/lib/systemd/system/3proxy.service <<'EOF'
+[Unit]
+Description=3proxy tiny proxy server
+After=network.target
+[Service]
+Type=simple
+ExecStart=/usr/local/etc/3proxy/bin/3proxy /usr/local/etc/3proxy/3proxy.cfg
+Restart=always
+LimitNOFILE=65535
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  systemctl daemon-reload
+  systemctl enable 3proxy
+
+  # 5. Kernel & firewall tối ưu
+  echo "net.ipv6.conf.$main_interface.proxy_ndp=1" >> /etc/sysctl.conf
+  echo "net.ipv6.conf.all.proxy_ndp=1" >> /etc/sysctl.conf
+  echo "net.ipv6.conf.default.forwarding=1" >> /etc/sysctl.conf
+  echo "net.ipv6.conf.all.forwarding=1" >> /etc/sysctl.conf
+  echo "net.ipv6.ip_nonlocal_bind = 1" >> /etc/sysctl.conf
+  sysctl -p
+  systemctl stop firewalld --quiet 2>/dev/null || true
+  systemctl disable firewalld --quiet 2>/dev/null || true
+
+  cd "$WORKDIR"
 }
 
 gen_3proxy() {
