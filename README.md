@@ -21,23 +21,7 @@ B1: update hệ thống (thường khá mất thời gian, có thể bỏ qua): 
 
 B2: cài đặt:
 
-curl -O https://raw.githubusercontent.com/Chickenbell/proxyv6/main/v6vultr2.sh
-
-chmod +x v6vultr2.sh
-
-sudo ./v6vultr2.sh
-
------------------------------------------------------------------------------
-
-Script sẽ hỏi:
-
-Số lượng proxy (mặc định: 2000)
-
-Port bắt đầu (mặc định: 40000)
-
-Có dùng username/password không
-
-Nếu có auth thì nhập username/password
+curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/refs/heads/main/v6_vultr.sh && bash v6_vultr.sh
 
 -----------------------------------------------------------------------------
 
@@ -47,9 +31,8 @@ Tạo và khởi động 3proxy service
 
 Cấu hình firewall mở ports
 
-Tạo files proxy.txt và data.txt
+Tạo files proxy.txt và data.txt lưu trong thư mục: /home/chickenbell
 
-Upload lên file.io và hiển thị download links
 
 
 
