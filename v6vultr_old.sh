@@ -16,7 +16,7 @@ install_3proxy() {
     echo "installing 3proxy"
     mkdir -p /3proxy
     cd /3proxy
-    URL="https://it4.vn/0.9.3.tar.gz"
+    URL="https://github.com/Chickenbell/proxyv6/releases/download/ok/0.9.3.tar.gz"
     wget -qO- $URL | bsdtar -xvf-
     cd 3proxy-0.9.3
     make -f Makefile.Linux
