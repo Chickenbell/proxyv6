@@ -17,11 +17,13 @@ PACKAGE_LIST=(gcc make tar wget curl zip iproute net-tools)
 
 main_iface() { ip route get 8.8.8.8 | awk '{print $5;exit}'; }
 random_str() { tr </dev/urandom -dc A-Za-z0-9 | head -c5; }
-hex()        { printf '%x' "$1"; }
 
-gen_ipv6() {                                # sinh 1 IPv6 /64 ngẫu nhiên
-  local prefix=$1; printf "%s:%04x:%04x:%04x:%04x\n" \
-    "$prefix" "$(hex $RANDOM)" "$(hex $RANDOM)" "$(hex $RANDOM)" "$(hex $RANDOM)"
+gen_ipv6() {                      # sinh 1 IPv6 /64 ngẫu nhiên, đúng chuẩn
+  local prefix=$1
+  printf "%s:%04x:%04x:%04x:%04x\n" \
+    "$prefix" \
+    $((RANDOM%65536)) $((RANDOM%65536)) \
+    $((RANDOM%65536)) $((RANDOM%65536))
 }
 
 install_pkgs() {
