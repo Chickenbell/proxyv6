@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Script tạo proxy IPv6 cho CentOS 9
-# Tác giả: Auto Generated Script
+# Script tạo proxy IPv6 cho CentOS
+# Tác giả: @Chickenbell
 
 # Màu sắc cho output
 RED='\033[0;31m'
@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 show_banner() {
     echo -e "${BLUE}"
     echo "=================================================="
-    echo "     IPv6 Proxy Generator for CentOS 9"
+    echo "     IPv6 Proxy Generator by @Chickenbell"
     echo "=================================================="
     echo -e "${NC}"
 }
@@ -44,12 +44,23 @@ check_root() {
 install_requirements() {
     log "Cài đặt các package cần thiết..."
     
-    # Update system
-    dnf update -y >/dev/null 2>&1
+    # Install EPEL repository
+    log "Đang cài đặt EPEL repository..."
+    dnf install -y epel-release --quiet
     
     # Install required packages
-    dnf install -y epel-release >/dev/null 2>&1
-    dnf install -y 3proxy curl wget jq >/dev/null 2>&1
+    log "Đang cài đặt curl, wget, jq..."
+    dnf install -y curl wget jq --quiet
+    
+    # Check if 3proxy is available in repos
+    log "Kiểm tra 3proxy trong repository..."
+    if ! dnf list available 3proxy &>/dev/null; then
+        warn "3proxy không có trong repository, sẽ compile từ source..."
+        install_3proxy_from_source
+    else
+        log "Đang cài đặt 3proxy từ repository..."
+        dnf install -y 3proxy --quiet
+    fi
     
     if ! command -v 3proxy &> /dev/null; then
         error "Không thể cài đặt 3proxy. Vui lòng cài đặt thủ công."
@@ -57,6 +68,33 @@ install_requirements() {
     fi
     
     log "Cài đặt hoàn tất!"
+}
+
+# Cài đặt 3proxy từ source nếu không có trong repo
+install_3proxy_from_source() {
+    log "Cài đặt 3proxy từ source code..."
+    
+    # Install build dependencies
+    dnf groupinstall -y "Development Tools" --quiet
+    dnf install -y gcc make --quiet
+    
+    # Download and compile 3proxy
+    cd /tmp
+    wget -q https://github.com/z3APA3A/3proxy/archive/0.9.4.tar.gz -O 3proxy.tar.gz
+    tar -xzf 3proxy.tar.gz
+    cd 3proxy-0.9.4
+    
+    make -f Makefile.Linux
+    
+    # Install binaries
+    cp bin/3proxy /usr/bin/
+    chmod +x /usr/bin/3proxy
+    
+    # Cleanup
+    cd /
+    rm -rf /tmp/3proxy*
+    
+    log "3proxy đã được compile và cài đặt thành công!"
 }
 
 # Lấy thông tin IPv6
