@@ -10,6 +10,7 @@ bước 1: yum update -y
 đợi chạy xong đoạn trên thì chạy lệnh sau để restart vps: reboot
 
 ------------------------>>>> code chạy với vultr: <<<<<------------------------
+dnf install -y gcc make tar wget curl net-tools zip
 
 bash <(curl -s "https://raw.githubusercontent.com/Chickenbell/proxyv6/main/v6vultr.sh")
 
