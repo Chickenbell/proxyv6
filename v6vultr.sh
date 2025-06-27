@@ -1,168 +1,181 @@
 #!/bin/bash
-#=============================================================
-#  IPv6 proxy installer for CentOS/Alma/RHEL 8 (Vultr VPS)
-#  Fixed 27-Jun-2025 – by ChatGPT
-#=============================================================
-
+#================================================================
+#  IPv6 Proxy Installer for Vultr VPS – 3proxy 0.9.3
+#  Written 27-Jun-2025 – ChatGPT
+#================================================================
 set -euo pipefail
 
-### ----------- TÙY CHỈNH NHANH ---------------------------------
+### ---------- CÀI ĐẶT NHANH ------------------------------------
 WORKDIR="/home/proxy-installer"
-WORKDATA="${WORKDIR}/data.txt"
-FIRST_PORT=40000            # cổng đầu
-LAST_PORT=42000             # cổng cuối
-PROXY_VERSION="0.9.3"
-PROXY_URL="https://github.com/z3APA3A/3proxy/archive/refs/tags/${PROXY_VERSION}.tar.gz"
-PACKAGE_LIST=(gcc make tar wget curl zip net-tools)
+FIRST_PORT=40000              # cổng đầu
+LAST_PORT=42000               # cổng cuối
+PROXY_VER="0.9.3"
+PROXY_URL="https://github.com/z3APA3A/3proxy/archive/refs/tags/${PROXY_VER}.tar.gz"
+AUTH_MODE="${AUTH_MODE:-none}"    # none | strong
+PACKAGE_LIST=(gcc make tar wget curl zip iproute net-tools)
 #----------------------------------------------------------------
 
-random() { tr </dev/urandom -dc A-Za-z0-9 | head -c5; echo; }
+main_iface() { ip route get 8.8.8.8 | awk '{print $5;exit}'; }
+random_str() { tr </dev/urandom -dc A-Za-z0-9 | head -c5; }
+hex()        { printf '%x' "$1"; }
 
-array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)          # phục vụ sinh IPv6
-main_interface=$(ip route get 8.8.8.8 | awk '{print $5; exit}')
-
-gen64() {                                         # sinh 1 IP /64 ngẫu nhiên
-  ip64() { echo "${array[$RANDOM%16]}${array[$RANDOM%16]}${array[$RANDOM%16]}${array[$RANDOM%16]}"; }
-  echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
+gen_ipv6() {                                # sinh 1 IPv6 /64 ngẫu nhiên
+  local prefix=$1; printf "%s:%04x:%04x:%04x:%04x\n" \
+    "$prefix" "$(hex $RANDOM)" "$(hex $RANDOM)" "$(hex $RANDOM)" "$(hex $RANDOM)"
 }
 
-install_packages() {
-  echo ">> Cài gói bắt buộc"
+install_pkgs() {
+  echo ">> Installing packages"
   if command -v dnf &>/dev/null; then
-      dnf  install -y "${PACKAGE_LIST[@]}"
+    dnf install -y "${PACKAGE_LIST[@]}"
   else
-      yum  install -y "${PACKAGE_LIST[@]}"
+    yum install -y "${PACKAGE_LIST[@]}"
   fi
 }
 
 install_3proxy() {
-  echo ">> Cài 3proxy ${PROXY_VERSION}"
+  echo ">> Installing 3proxy $PROXY_VER"
   mkdir -p /3proxy && cd /3proxy
-  curl -sSL "${PROXY_URL}" | tar -xz
-  cd "3proxy-${PROXY_VERSION}"
+  curl -sSL "$PROXY_URL" | tar -xz
+  cd "3proxy-$PROXY_VER"
   make -f Makefile.Linux
   install -m755 bin/3proxy /usr/local/bin/3proxy
   mkdir -p /usr/local/etc/3proxy/{logs,stat}
-
   cat >/usr/lib/systemd/system/3proxy.service <<'EOF'
 [Unit]
 Description=3proxy tiny proxy server
 After=network.target
-
 [Service]
 Type=forking
 ExecStart=/usr/local/bin/3proxy /usr/local/etc/3proxy/3proxy.cfg
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 LimitNOFILE=65535
-
 [Install]
 WantedBy=multi-user.target
 EOF
-
   systemctl daemon-reload
   systemctl enable 3proxy
-
-  echo ">> Bật forward & NDP proxy"
-  cat >>/etc/sysctl.conf <<EOF
-net.ipv6.conf.${main_interface}.proxy_ndp = 1
-net.ipv6.conf.all.proxy_ndp       = 1
-net.ipv6.conf.default.forwarding  = 1
-net.ipv6.conf.all.forwarding      = 1
-net.ipv6.ip_nonlocal_bind         = 1
-EOF
-  sysctl -p
-
-  echo ">> Tắt firewalld để mở port"
-  systemctl stop firewalld  2>/dev/null || true
-  systemctl disable firewalld 2>/dev/null || true
 }
 
-gen_data() {                 # user/pass/IP/port/IPv6
-  seq $FIRST_PORT $LAST_PORT | while read -r port; do
-    echo "$(random)/$(random)/${IP4}/${port}/$(gen64 ${IP6})"
+enable_sysctl() {
+  local nic
+  nic=$(main_iface)
+  cat >>/etc/sysctl.conf <<EOF
+net.ipv6.conf.${nic}.proxy_ndp = 1
+net.ipv6.conf.all.proxy_ndp    = 1
+net.ipv6.conf.default.forwarding = 1
+net.ipv6.conf.all.forwarding     = 1
+net.ipv6.ip_nonlocal_bind        = 1
+EOF
+  sysctl -p
+}
+
+generate_data() {
+  local ip4 ip6prefix
+  ip4=$(curl -4 -s icanhazip.com)
+  ip6prefix=$(curl -6 -s icanhazip.com | cut -d':' -f1-4)
+
+  mkdir -p "$WORKDIR"
+  local port user pass ipv6
+  : >"$WORKDIR/data.txt"
+
+  for port in $(seq $FIRST_PORT $LAST_PORT); do
+    ipv6=$(gen_ipv6 "$ip6prefix")
+    if [[ $AUTH_MODE == strong ]]; then
+      user=$(random_str); pass=$(random_str)
+      echo "$user/$pass/$ip4/$port/$ipv6" >>"$WORKDIR/data.txt"
+    else
+      echo "none/none/$ip4/$port/$ipv6"   >>"$WORKDIR/data.txt"
+    fi
   done
 }
 
-gen_iptables()  { awk -F/ '{print "iptables -I INPUT -p tcp --dport "$4" -m state --state NEW -j ACCEPT"}'  "$WORKDATA"; }
-gen_ifconfig()  { awk -F/ -v nic="$main_interface" '{print "ifconfig "nic" inet6 add "$5"/64"}' "$WORKDATA"; }
-
-gen_3proxy_cfg() {
-cat <<EOF
-daemon
-maxconn 2000
-nserver 1.1.1.1
-nserver 8.8.4.4
-nserver 2001:4860:4860::8888
-nserver 2001:4860:4860::8844
-nscache 65536
-timeouts 1 5 30 60 180 1800 15 60
-setgid 65535
-setuid 65535
-stacksize 6291456
-flush
-auth none
-
-users $(awk -F/ 'BEGIN{ORS="";}{printf $1":CL:"$2" "}' "$WORKDATA")
-
-$(awk -F/ '{print "auth none\nallow "$1"\nproxy -6 -n -a -p"$4" -i"$3" -e"$5"\nflush\n"}' "$WORKDATA")
-EOF
+assign_ipv6() {
+  echo ">> Assigning IPv6"
+  local nic
+  nic=$(main_iface)
+  awk -F/ -v nic="$nic" '{print "ip -6 addr add "$5"/64 dev "nic}' "$WORKDIR/data.txt" \
+    >"$WORKDIR/boot_ifconfig.sh"
+  chmod +x "$WORKDIR/boot_ifconfig.sh"
+  bash "$WORKDIR/boot_ifconfig.sh"
 }
 
-gen_proxy_file_for_user() { awk -F/ '{print $3":"$4":"$1":"$2}' "$WORKDATA" >"$WORKDIR/proxy.txt"; }
-
-upload_proxy() {
-  cd "$WORKDIR"
-  zip -q "${IP4}.zip" proxy.txt
-  URL=$(curl -F "file=@${IP4}.zip" https://file.io)
-  echo -e "\n==============  LINK TẢI DANH SÁCH PROXY  =============="
-  echo "$URL"
-  echo "========================================================\n"
+open_ports() {
+  echo ">> Opening ports"
+  awk -F/ '{print "iptables -I INPUT -p tcp --dport "$4" -j ACCEPT"}' \
+    "$WORKDIR/data.txt" >"$WORKDIR/boot_iptables.sh"
+  chmod +x "$WORKDIR/boot_iptables.sh"
+  bash "$WORKDIR/boot_iptables.sh"
 }
 
-prepare_boot_scripts() {
-  echo ">> Tạo script iptables & ifconfig"
-  gen_iptables >"$WORKDIR/boot_iptables.sh"
-  gen_ifconfig >"$WORKDIR/boot_ifconfig.sh"
-  chmod +x "$WORKDIR"/boot_*.sh
+build_3proxy_cfg() {
+  echo ">> Creating 3proxy.cfg"
+  {
+    echo "daemon";
+    echo "maxconn 2000";
+    echo "nserver 1.1.1.1";
+    echo "nserver 2001:4860:4860::8888";
+    echo "nscache 65536";
+    if [[ $AUTH_MODE == strong ]]; then
+      echo -n "users "
+      awk -F/ '{printf $1":CL:"$2" "}' "$WORKDIR/data.txt"; echo
+      echo "auth strong"
+    else
+      echo "auth none"
+    fi
+    echo
+    awk -F/ '{print "proxy -6 -n -a -p"$4" -i"$3" -e"$5"\nflush"}' "$WORKDIR/data.txt"
+  } >/usr/local/etc/3proxy/3proxy.cfg
 }
 
-setup_rc_local() {
-  echo ">> Khởi tạo /etc/rc.local để chạy lại sau reboot"
+make_startup() {
+  echo ">> Configuring rc.local"
   cat >/etc/rc.local <<EOF
 #!/bin/bash
-bash ${WORKDIR}/boot_iptables.sh
-bash ${WORKDIR}/boot_ifconfig.sh
+bash $WORKDIR/boot_ifconfig.sh
+bash $WORKDIR/boot_iptables.sh
 ulimit -n 65535
 systemctl start 3proxy
 EOF
   chmod +x /etc/rc.local
 }
 
+export_proxy_list() {
+  local list out zipname link
+  if [[ $AUTH_MODE == strong ]]; then
+    list="proxy_auth.txt"
+    awk -F/ '{print $3":"$4":"$1":"$2}' "$WORKDIR/data.txt" >"$WORKDIR/$list"
+  else
+    list="proxy.txt"
+    awk -F/ '{print $3":"$4}' "$WORKDIR/data.txt" >"$WORKDIR/$list"
+  fi
+  zipname="$(hostname -I | awk '{print $1}').zip"
+  cd "$WORKDIR" && zip -q "$zipname" "$list"
+  link=$(curl -sF "file=@$zipname" https://file.io | cut -d'"' -f8)
+  echo -e "\n===== LINK TẢI $list =====\n$link\n===========================\n"
+}
+
+disable_firewalld() {
+  systemctl stop firewalld 2>/dev/null || true
+  systemctl disable firewalld 2>/dev/null || true
+}
+
 main() {
-  install_packages
+  install_pkgs
   install_3proxy
-
-  mkdir -p "$WORKDIR"
-  IP4=$(curl -4 -s icanhazip.com)
-  IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
-  echo "IPv4  = $IP4"
-  echo "IPv6/64 prefix = $IP6"
-
-  gen_data  >"$WORKDATA"
-  gen_3proxy_cfg >/usr/local/etc/3proxy/3proxy.cfg
-
-  prepare_boot_scripts
-  setup_rc_local
-
-  echo ">> Khởi động 3proxy"
-  systemctl start 3proxy
+  enable_sysctl
+  generate_data
+  assign_ipv6
+  open_ports
+  build_3proxy_cfg
+  make_startup
+  disable_firewalld
+  echo ">> Starting 3proxy"
+  systemctl restart 3proxy
   systemctl status 3proxy --no-pager
-
-  gen_proxy_file_for_user
-  upload_proxy
-
-  echo "HOÀN TẤT – Thưởng thức proxy IPv6 của bạn!"
+  export_proxy_list
+  echo "=== FINISHED: Your IPv6 proxies are ready! ==="
 }
 
 main
