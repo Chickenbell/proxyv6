@@ -19,9 +19,16 @@ B1: update hệ thống (thường khá mất thời gian, có thể bỏ qua): 
 đợi chạy xong thì chạy lệnh sau để restart vps: reboot
 
 
-B2: cài đặt:
+B2: cài đặt: (Chạy 1 trong 2 phiên bản dưới đây, tùy nhu cầu)
+
+V1: tự động tạo 2000 proxy:
 
 curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/refs/heads/main/v6_vultr.sh && bash v6_vultr.sh
+
+V2: người dùng tự nhập số proxy và số port bắt đầu
+
+curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/refs/heads/main/v6_vultr_v2.sh && v6_vultr_v2.sh
+
 
 -----------------------------------------------------------------------------
 
