@@ -27,7 +27,7 @@ curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/refs/heads/main/v
 
 V2: người dùng tự nhập số proxy và số port bắt đầu
 
-curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/refs/heads/main/v6_vultr_v2.sh && v6_vultr_v2.sh
+curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/refs/heads/main/v6_vultr_v2.sh && bash v6_vultr_v2.sh
 
 
 -----------------------------------------------------------------------------
