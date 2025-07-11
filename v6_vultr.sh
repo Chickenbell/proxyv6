@@ -75,11 +75,9 @@ EOF
 upload_proxy() {
     cd $WORKDIR
     local PASS=$(random)
-    zip ${IP4}.zip proxy.txt
+    zip ${IP4}.zip data.txt
     URL=$(curl -F "file=@${IP4}.zip" https://file.io)
     echo "Download zip archive from: ${URL}"
-
-
 }
 gen_data() {
     seq $FIRST_PORT $LAST_PORT | while read port; do
@@ -135,5 +133,6 @@ EOF
 
 bash /etc/rc.local
 echo "Proxy save on /home/chickenbell/data.txt"
+echo "Proxy type: ussername/password/ipv4/port/ipv6-address"
 
 upload_proxy
