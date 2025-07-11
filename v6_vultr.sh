@@ -22,7 +22,7 @@ install_3proxy() {
     make -f Makefile.Linux
     mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
     mv /3proxy/3proxy-0.9.3/bin/3proxy /usr/local/etc/3proxy/bin/
-    wget https://it4.vn/3proxy.service-Centos8 --output-document=/3proxy/3proxy-0.9.3/scripts/3proxy.service2
+    wget https://raw.githubusercontent.com/Chickenbell/proxyv6/refs/heads/main/3proxy.service-centos8 --output-document=/3proxy/3proxy-0.9.3/scripts/3proxy.service2
     cp /3proxy/3proxy-0.9.3/scripts/3proxy.service2 /usr/lib/systemd/system/3proxy.service
     systemctl link /usr/lib/systemd/system/3proxy.service
     systemctl daemon-reload
@@ -134,7 +134,7 @@ ulimit -n 65535
 EOF
 
 bash /etc/rc.local
-
+gen_proxy_file_for_user
 echo "Proxy save on /home/chickenbell/proxy.txt"
 
 upload_proxy
