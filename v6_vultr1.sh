@@ -134,7 +134,7 @@ ulimit -n 65535
 EOF
 
 bash /etc/rc.local
-
+gen_proxy_file_for_user
 echo "Proxy save on /home/chickenbell/proxy.txt"
 
 upload_proxy
