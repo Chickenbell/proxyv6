@@ -76,8 +76,23 @@ upload_proxy() {
     cd $WORKDIR
     local PASS=$(random)
     zip ${IP4}.zip data.txt
-    URL=$(curl -F "file=@${IP4}.zip" https://file.io)
-    echo "Download zip archive from: ${URL}"
+    
+    URL=$(curl --upload-file "${IP4}.zip" "https://transfer.sh/${IP4}.zip")
+    echo "Tải file tại: $URL"
+    
+    RESPONSE=$(curl -s -F "file=@${IP4}.zip" https://store1.gofile.io/uploadFile)
+    URL=$(echo "$RESPONSE" | grep -o '"downloadPage":"[^"]*"' | cut -d'"' -f4)
+    echo "Link: $URL"
+
+    RESPONSE=$(curl -s -F "file=@${IP4}.zip" https://api.anonfiles.com/upload)
+    URL=$(echo "$RESPONSE" | grep -o '"full":"[^"]*"' | cut -d'"' -f4)
+    echo "Link tải: $URL"
+
+    RESPONSE=$(curl -s -F "reqtype=fileupload" -F "fileToUpload=@${IP4}.zip" https://catbox.moe/user/api.php)
+    echo "Link tải: $RESPONSE"
+    
+    echo "pass: $PASS"
+    
 }
 gen_data() {
     seq $FIRST_PORT $LAST_PORT | while read port; do
