@@ -133,6 +133,6 @@ EOF
 
 bash /etc/rc.local
 echo "Proxy save on /home/chickenbell/data.txt"
-echo "Proxy type: ussername/password/ipv4/port/ipv6-address"
+echo "ussername/password/ipv4/port/ipv6-address"
 
 upload_proxy
