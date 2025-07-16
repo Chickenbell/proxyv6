@@ -41,6 +41,12 @@ Cấu hình firewall mở ports
 Tạo files proxy.txt và data.txt lưu trong thư mục: /home/chickenbell
 
 
+Cleanup and re-gen: 
+
+curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/refs/heads/main/cleanup.sh && bash cleanup.sh && bash v6_vultr.sh
+
+curl -sO https://raw.githubusercontent.com/Chickenbell/proxyv6/refs/heads/main/cleanup.sh && bash cleanup.sh && bash v6_vultr_v2.sh
+
 
 
 ------------------------>>> code chạy với bkns: <<<<<------------------------
