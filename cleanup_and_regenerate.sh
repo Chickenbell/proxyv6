@@ -7,4 +7,3 @@ ip -6 addr flush dev $(ip route get 8.8.8.8 | awk '{print $5}')
 rm -f /usr/local/etc/3proxy/3proxy.cfg /home/chickenbell/data.txt /home/chickenbell/proxy.txt
 systemctl restart network
 sleep 5
-./v6_vultr_v2.sh
