@@ -1,0 +1,372 @@
+#!/bin/sh
+random() {
+	tr </dev/urandom -dc A-Za-z0-9 | head -c5
+	echo
+}
+
+array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
+main_interface=$(ip route get 8.8.8.8 | awk -- '{printf $5}')
+gen64() {
+	ip64() {
+		echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
+	}
+	echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
+}
+install_3proxy() {
+    echo "installing 3proxy"
+    mkdir -p /3proxy
+    cd /3proxy
+    URL="https://github.com/Chickenbell/proxyv6/releases/download/ok/0.9.3.tar.gz"
+    wget -qO- $URL | bsdtar -xvf-
+    cd 3proxy-0.9.3
+    make -f Makefile.Linux
+    mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
+    mv /3proxy/3proxy-0.9.3/bin/3proxy /usr/local/etc/3proxy/bin/
+    wget https://raw.githubusercontent.com/Chickenbell/proxyv6/refs/heads/main/3proxy.service-centos8 --output-document=/3proxy/3proxy-0.9.3/scripts/3proxy.service2
+    cp /3proxy/3proxy-0.9.3/scripts/3proxy.service2 /usr/lib/systemd/system/3proxy.service
+    systemctl link /usr/lib/systemd/system/3proxy.service
+    systemctl daemon-reload
+    systemctl enable 3proxy
+    echo "* hard nofile 999999" >>  /etc/security/limits.conf
+    echo "* soft nofile 999999" >>  /etc/security/limits.conf
+    echo "net.ipv6.conf.$main_interface.proxy_ndp=1" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.all.proxy_ndp=1" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.default.forwarding=1" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.all.forwarding=1" >> /etc/sysctl.conf
+    echo "net.ipv6.ip_nonlocal_bind = 1" >> /etc/sysctl.conf
+    sysctl -p
+    systemctl stop firewalld
+    systemctl disable firewalld
+
+    cd $WORKDIR
+}
+
+gen_3proxy() {
+    cat <<EOF
+daemon
+maxconn 2000
+nserver 1.1.1.1
+nserver 8.8.4.4
+nserver 2001:4860:4860::8888
+nserver 2001:4860:4860::8844
+nscache 65536
+timeouts 1 5 30 60 180 1800 15 60
+setgid 65535
+setuid 65535
+stacksize 6291456
+flush
+auth none
+
+users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
+
+$(awk -F "/" '{print "auth none\n" \
+"allow " $1 "\n" \
+"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
+"flush\n"}' ${WORKDATA})
+EOF
+}
+
+gen_proxy_file_for_user() {
+    cat >proxy.txt <<EOF
+$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
+EOF
+}
+
+upload_proxy() {
+    cd $WORKDIR
+    local PASS=$(random)
+    zip ${IP4}.zip data.txt
+    RESPONSE=$(curl -s -F "file=@${IP4}.zip" https://store1.gofile.io/uploadFile)
+    URL=$(echo "$RESPONSE" | grep -o '"downloadPage":"[^"]*"' | cut -d'"' -f4)
+    echo "Download link 1: $URL"
+
+    RESPONSE=$(curl -s -F "reqtype=fileupload" -F "fileToUpload=@${IP4}.zip" https://catbox.moe/user/api.php)
+    echo "Download link 2: $RESPONSE"
+}
+gen_data() {
+    seq $FIRST_PORT $LAST_PORT | while read port; do
+        echo "$(random)/$(random)/$IP4/$port/$(gen64 $IP6)"
+    done
+}
+
+gen_iptables() {
+    cat <<EOF
+    $(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 "  -m state --state NEW -j ACCEPT"}' ${WORKDATA})
+EOF
+}
+
+gen_ifconfig() {
+    cat <<EOF
+$(awk -F "/" '{print "ifconfig '$main_interface' inet6 add " $5 "/64"}' ${WORKDATA})
+EOF
+}
+
+# NEW FUNCTIONS FOR IPv6 ROTATION
+create_rotation_script() {
+    cat > $WORKDIR/rotate_ipv6.sh <<'EOF'
+#!/bin/bash
+WORKDIR="/home/chickenbell"
+WORKDATA="${WORKDIR}/data.txt"
+BACKUP_DATA="${WORKDIR}/data_backup.txt"
+main_interface=$(ip route get 8.8.8.8 | awk -- '{printf $5}')
+
+array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
+IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
+
+gen64() {
+	ip64() {
+		echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
+	}
+	echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
+}
+
+gen_3proxy() {
+    cat <<EOFPROXY
+daemon
+maxconn 2000
+nserver 1.1.1.1
+nserver 8.8.4.4
+nserver 2001:4860:4860::8888
+nserver 2001:4860:4860::8844
+nscache 65536
+timeouts 1 5 30 60 180 1800 15 60
+setgid 65535
+setuid 65535
+stacksize 6291456
+flush
+auth none
+
+users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
+
+$(awk -F "/" '{print "auth none\n" \
+"allow " $1 "\n" \
+"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
+"flush\n"}' ${WORKDATA})
+EOFPROXY
+}
+
+gen_ifconfig() {
+    cat <<EOFIF
+$(awk -F "/" '{print "ifconfig '$main_interface' inet6 add " $5 "/64"}' ${WORKDATA})
+EOFIF
+}
+
+rotate_ipv6() {
+    echo "$(date): Starting IPv6 rotation..." >> $WORKDIR/rotation.log
+    
+    # Backup current data
+    cp $WORKDATA $BACKUP_DATA
+    
+    # Remove old IPv6 addresses
+    awk -F "/" '{print "ifconfig '$main_interface' inet6 del " $5 "/64"}' $WORKDATA | bash
+    
+    # Generate new IPv6 addresses while keeping username/password/ip4/port
+    awk -F "/" -v ip6="$IP6" '
+    {
+        # Generate new IPv6
+        cmd = "bash -c '\''array=(1 2 3 4 5 6 7 8 9 0 a b c d e f); ip64() { echo \"${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}\"; }; echo \"" ip6 ":$(ip64):$(ip64):$(ip64):$(ip64)\"'\''"
+        cmd | getline new_ipv6
+        close(cmd)
+        print $1 "/" $2 "/" $3 "/" $4 "/" new_ipv6
+    }' $WORKDATA > $WORKDATA.tmp && mv $WORKDATA.tmp $WORKDATA
+    
+    # Apply new IPv6 addresses
+    gen_ifconfig | bash
+    
+    # Regenerate 3proxy config
+    gen_3proxy > /usr/local/etc/3proxy/3proxy.cfg
+    
+    # Restart 3proxy service
+    systemctl restart 3proxy
+    
+    echo "$(date): IPv6 rotation completed successfully" >> $WORKDIR/rotation.log
+    echo "New proxy list saved to $WORKDATA"
+}
+
+# Execute rotation
+rotate_ipv6
+EOF
+    chmod +x $WORKDIR/rotate_ipv6.sh
+}
+
+create_rotation_service() {
+    cat > /etc/systemd/system/ipv6-rotation.service <<EOF
+[Unit]
+Description=IPv6 Proxy Rotation Service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/chickenbell/rotate_ipv6.sh
+User=root
+EOF
+
+    cat > /etc/systemd/system/ipv6-rotation.timer <<EOF
+[Unit]
+Description=IPv6 Rotation Timer
+Requires=ipv6-rotation.service
+
+[Timer]
+OnBootSec=1h
+OnUnitActiveSec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable ipv6-rotation.timer
+    echo "IPv6 rotation service created with 1 hour interval"
+}
+
+create_rotation_manager() {
+    cat > $WORKDIR/manage_rotation.sh <<'EOF'
+#!/bin/bash
+
+show_help() {
+    echo "IPv6 Proxy Rotation Manager"
+    echo "Usage: $0 [OPTION]"
+    echo ""
+    echo "Options:"
+    echo "  start              Start automatic rotation timer"
+    echo "  stop               Stop automatic rotation timer"
+    echo "  status             Show rotation service status"
+    echo "  rotate-now         Perform immediate IPv6 rotation"
+    echo "  set-interval TIME  Set rotation interval (e.g., 30m, 2h, 1d)"
+    echo "  show-log           Show rotation log"
+    echo "  backup-restore     Restore from last backup"
+    echo "  help               Show this help message"
+}
+
+case "$1" in
+    start)
+        systemctl start ipv6-rotation.timer
+        systemctl enable ipv6-rotation.timer
+        echo "IPv6 rotation timer started and enabled"
+        ;;
+    stop)
+        systemctl stop ipv6-rotation.timer
+        systemctl disable ipv6-rotation.timer
+        echo "IPv6 rotation timer stopped and disabled"
+        ;;
+    status)
+        systemctl status ipv6-rotation.timer
+        echo ""
+        echo "Next scheduled rotation:"
+        systemctl list-timers ipv6-rotation.timer
+        ;;
+    rotate-now)
+        echo "Performing immediate IPv6 rotation..."
+        /home/chickenbell/rotate_ipv6.sh
+        echo "Rotation completed"
+        ;;
+    set-interval)
+        if [ -z "$2" ]; then
+            echo "Error: Please specify interval (e.g., 30m, 2h, 1d)"
+            exit 1
+        fi
+        sed -i "s/OnUnitActiveSec=.*/OnUnitActiveSec=$2/" /etc/systemd/system/ipv6-rotation.timer
+        systemctl daemon-reload
+        systemctl restart ipv6-rotation.timer
+        echo "Rotation interval set to $2"
+        ;;
+    show-log)
+        if [ -f /home/chickenbell/rotation.log ]; then
+            tail -20 /home/chickenbell/rotation.log
+        else
+            echo "No rotation log found"
+        fi
+        ;;
+    backup-restore)
+        if [ -f /home/chickenbell/data_backup.txt ]; then
+            cp /home/chickenbell/data_backup.txt /home/chickenbell/data.txt
+            /home/chickenbell/rotate_ipv6.sh
+            echo "Restored from backup and applied configuration"
+        else
+            echo "No backup file found"
+        fi
+        ;;
+    restart-3proxy)
+        echo "Manually restarting 3proxy..."
+        pkill -f 3proxy || true
+        sleep 2
+        /usr/local/etc/3proxy/bin/3proxy /usr/local/etc/3proxy/3proxy.cfg &
+        sleep 2
+        if pgrep -f 3proxy > /dev/null; then
+            echo "3proxy restarted successfully"
+        else
+            echo "Warning: 3proxy may not have started properly"
+        fi
+        ;;
+    help|*)
+        show_help
+        ;;
+esac
+EOF
+    chmod +x $WORKDIR/manage_rotation.sh
+}
+
+echo "installing apps"
+yum -y install gcc net-tools bsdtar zip make >/dev/null
+
+install_3proxy
+
+echo "working folder = /home/chickenbell"
+WORKDIR="/home/chickenbell"
+WORKDATA="${WORKDIR}/data.txt"
+mkdir $WORKDIR && cd $_
+
+IP4=$(curl -4 -s icanhazip.com)
+IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
+
+echo "Internal ip = ${IP4}. Exteranl sub for ip6 = ${IP6}"
+
+FIRST_PORT=40000
+LAST_PORT=42000
+
+gen_data >$WORKDIR/data.txt
+gen_iptables >$WORKDIR/boot_iptables.sh
+gen_ifconfig >$WORKDIR/boot_ifconfig.sh
+echo NM_CONTROLLED="no" >> /etc/sysconfig/network-scripts/ifcfg-${main_interface}
+chmod +x $WORKDIR/boot_*.sh /etc/rc.local
+
+gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
+
+cat >>/etc/rc.local <<EOF
+#systemctl start NetworkManager.service
+# ifup ${main_interface}
+bash ${WORKDIR}/boot_iptables.sh
+bash ${WORKDIR}/boot_ifconfig.sh
+ulimit -n 65535
+/usr/local/etc/3proxy/bin/3proxy /usr/local/etc/3proxy/3proxy.cfg &
+EOF
+
+bash /etc/rc.local
+
+# CREATE IPv6 ROTATION COMPONENTS
+echo "Setting up IPv6 rotation system..."
+create_rotation_script
+create_rotation_service
+create_rotation_manager
+
+echo ""
+echo "=================================="
+echo "Setup completed successfully!"
+echo "=================================="
+echo "Proxy data saved to: $WORKDIR/data.txt"
+echo "Format: username/password/ipv4/port/ipv6-address"
+echo ""
+echo "IPv6 Rotation Management:"
+echo "  Start rotation:     $WORKDIR/manage_rotation.sh start"
+echo "  Stop rotation:      $WORKDIR/manage_rotation.sh stop"
+echo "  Rotate now:         $WORKDIR/manage_rotation.sh rotate-now"
+echo "  Set interval:       $WORKDIR/manage_rotation.sh set-interval 2h"
+echo "  Check status:       $WORKDIR/manage_rotation.sh status"
+echo "  View log:           $WORKDIR/manage_rotation.sh show-log"
+echo "  Help:               $WORKDIR/manage_rotation.sh help"
+echo ""
+echo "Default rotation interval: 1 hour (customizable)"
+echo "=================================="
+
+upload_proxy
